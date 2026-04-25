@@ -15,6 +15,7 @@ public partial class SimulationHandler : Node
     private readonly float[] _sdf = new float[GridWidth * GridHeight];
 
     public bool IsRunning => _simulation != IntPtr.Zero;
+    private readonly bool[] _wallMask = new bool[GridWidth * GridHeight];
 
     static SimulationHandler()
     {
@@ -72,6 +73,7 @@ public partial class SimulationHandler : Node
 
     private void ResetSdf()
     {
+        Array.Fill(_wallMask, false);
         Array.Fill(_sdf, 1.0f);
         UploadSdf();
     }
@@ -211,42 +213,62 @@ public partial class SimulationHandler : Node
 
     public bool PaintWall(Vector2 position, int brushRadius = 1)
     {
-        if (_simulation == IntPtr.Zero)
-        {
-            return false;
-        }
+        if (_simulation == IntPtr.Zero) return false;
 
         int centerX = Math.Clamp(Mathf.RoundToInt(position.X), 0, GridWidth - 1);
         int centerY = Math.Clamp(Mathf.RoundToInt(position.Y), 0, GridHeight - 1);
-        int radius = Math.Max(0, brushRadius);
-        int radiusSquared = radius * radius;
+        int radiusSquared = brushRadius * brushRadius;
 
-        for (int y = centerY - radius; y <= centerY + radius; y++)
+        for (int y = centerY - brushRadius; y <= centerY + brushRadius; y++)
         {
-            if (y < 0 || y >= GridHeight)
+            for (int x = centerX - brushRadius; x <= centerX + brushRadius; x++)
             {
-                continue;
-            }
-
-            for (int x = centerX - radius; x <= centerX + radius; x++)
-            {
-                if (x < 0 || x >= GridWidth)
+                if (x >= 0 && x < GridWidth && y >= 0 && y < GridHeight)
                 {
-                    continue;
+                    int dx = x - centerX;
+                    int dy = y - centerY;
+                    if (dx * dx + dy * dy <= radiusSquared)
+                    {
+                        _wallMask[y * GridWidth + x] = true;
+                    }
                 }
-
-                int dx = x - centerX;
-                int dy = y - centerY;
-                if (dx * dx + dy * dy > radiusSquared)
-                {
-                    continue;
-                }
-
-                _sdf[y * GridWidth + x] = -1.0f;
             }
         }
 
+        UpdateSdfTransform();
         return UploadSdf();
+    }
+
+    private void UpdateSdfTransform()
+    {
+        for (int y = 0; y < GridHeight; y++)
+        {
+            for (int x = 0; x < GridWidth; x++)
+            {
+                bool isWall = _wallMask[y * GridWidth + x];
+                float minDistance = float.MaxValue;
+
+                // Naive O(N^2) search. For 64x64, this is extremely fast.
+                for (int searchY = 0; searchY < GridHeight; searchY++)
+                {
+                    for (int searchX = 0; searchX < GridWidth; searchX++)
+                    {
+                        if (_wallMask[searchY * GridWidth + searchX] != isWall)
+                        {
+                            float dx = x - searchX;
+                            float dy = y - searchY;
+                            float dist = (float)Math.Sqrt(dx * dx + dy * dy);
+                            if (dist < minDistance) minDistance = dist;
+                        }
+                    }
+                }
+
+                if (minDistance == float.MaxValue) minDistance = 1.0f;
+
+                // Negative inside, positive outside
+                _sdf[y * GridWidth + x] = isWall ? -minDistance : minDistance;
+            }
+        }
     }
 
     public bool IsWallCell(int x, int y)

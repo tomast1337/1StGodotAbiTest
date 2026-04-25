@@ -128,26 +128,41 @@ impl Simulation {
 }
 
 fn sample_sdf(sdf_grid: &[f32], width: usize, height: usize, pos: MathVec2) -> Option<f32> {
-    if width == 0 || height == 0 || !pos.x.is_finite() || !pos.y.is_finite() {
+    if width == 0 || height == 0 || !pos.is_finite() {
         return None;
     }
 
-    let x = pos.x.round() as isize;
-    let y = pos.y.round() as isize;
+    let x0 = pos.x.floor() as isize;
+    let y0 = pos.y.floor() as isize;
+    let x1 = x0 + 1;
+    let y1 = y0 + 1;
 
-    if x < 0 || y < 0 || x >= width as isize || y >= height as isize {
-        return None;
-    }
+    let tx = pos.x - pos.x.floor();
+    let ty = pos.y - pos.y.floor();
 
-    sdf_grid.get(y as usize * width + x as usize).copied()
+    let get_val = |x: isize, y: isize| -> f32 {
+        let cx = x.clamp(0, width as isize - 1) as usize;
+        let cy = y.clamp(0, height as isize - 1) as usize;
+        sdf_grid[cy * width + cx]
+    };
+
+    let c00 = get_val(x0, y0);
+    let c10 = get_val(x1, y0);
+    let c01 = get_val(x0, y1);
+    let c11 = get_val(x1, y1);
+
+    let top = c00 * (1.0 - tx) + c10 * tx;
+    let bottom = c01 * (1.0 - tx) + c11 * tx;
+
+    Some(top * (1.0 - ty) + bottom * ty)
 }
 
 fn estimate_sdf_normal(sdf_grid: &[f32], width: usize, height: usize, pos: MathVec2) -> MathVec2 {
-    let center = sample_sdf(sdf_grid, width, height, pos).unwrap_or(0.0);
-    let right = sample_sdf(sdf_grid, width, height, pos + MathVec2::X).unwrap_or(center);
-    let left = sample_sdf(sdf_grid, width, height, pos - MathVec2::X).unwrap_or(center);
-    let down = sample_sdf(sdf_grid, width, height, pos + MathVec2::Y).unwrap_or(center);
-    let up = sample_sdf(sdf_grid, width, height, pos - MathVec2::Y).unwrap_or(center);
+    let eps = 0.1; 
+    let right = sample_sdf(sdf_grid, width, height, pos + MathVec2::new(eps, 0.0)).unwrap_or(0.0);
+    let left  = sample_sdf(sdf_grid, width, height, pos - MathVec2::new(eps, 0.0)).unwrap_or(0.0);
+    let down  = sample_sdf(sdf_grid, width, height, pos + MathVec2::new(0.0, eps)).unwrap_or(0.0);
+    let up    = sample_sdf(sdf_grid, width, height, pos - MathVec2::new(0.0, eps)).unwrap_or(0.0);
 
     MathVec2::new(right - left, down - up).normalize_or_zero()
 }
