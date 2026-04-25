@@ -1,0 +1,48 @@
+[gd_scene format=3 uid="uid://bk58warulyhxo"]
+
+[ext_resource type="Script" uid="uid://lgw0ivt2pife" path="res://ParticleRenderer2D.cs" id="1_h0tq8"]
+[ext_resource type="Script" uid="uid://bn14eoiqg8hyi" path="res://SimulationHandler.cs" id="2_q4k6n"]
+[ext_resource type="Script" uid="uid://bawsdg850rix" path="res://SimulationUi.cs" id="3_hvncf"]
+
+[node name="Node2D" type="Node2D" unique_id=772290646]
+position = Vector2(0, 5)
+script = ExtResource("1_h0tq8")
+AttractorRadius = 120.0
+
+[node name="SimulationHandler" type="Node" parent="." unique_id=679416659]
+script = ExtResource("2_q4k6n")
+
+[node name="UiLayer" type="CanvasLayer" parent="." unique_id=605975700]
+
+[node name="ToolsPanel" type="PanelContainer" parent="UiLayer" unique_id=1088002576]
+offset_left = 407.0
+offset_top = 536.0
+offset_right = 807.0
+offset_bottom = 634.0
+script = ExtResource("3_hvncf")
+
+[node name="VBox" type="VBoxContainer" parent="UiLayer/ToolsPanel" unique_id=1176827321]
+layout_mode = 2
+
+[node name="ParticleCountLabel" type="Label" parent="UiLayer/ToolsPanel/VBox" unique_id=665708713]
+layout_mode = 2
+text = "Particles: 0"
+
+[node name="ToolRow" type="HBoxContainer" parent="UiLayer/ToolsPanel/VBox" unique_id=937903533]
+layout_mode = 2
+
+[node name="EmitterButton" type="Button" parent="UiLayer/ToolsPanel/VBox/ToolRow" unique_id=22307128]
+layout_mode = 2
+text = "Emitter"
+
+[node name="AttractorButton" type="Button" parent="UiLayer/ToolsPanel/VBox/ToolRow" unique_id=1593216510]
+layout_mode = 2
+text = "Attractor"
+
+[node name="DrawWallButton" type="Button" parent="UiLayer/ToolsPanel/VBox/ToolRow" unique_id=961254684]
+layout_mode = 2
+text = "Draw Wall"
+
+[node name="ResetButton" type="Button" parent="UiLayer/ToolsPanel/VBox" unique_id=1472176678]
+layout_mode = 2
+text = "Reset"
