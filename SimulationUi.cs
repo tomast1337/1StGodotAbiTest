@@ -1,4 +1,5 @@
 using Godot;
+using System;
 
 public partial class SimulationUi : Control
 {
@@ -23,6 +24,9 @@ public partial class SimulationUi : Control
     [Export]
     public NodePath ResetButtonPath { get; set; } = "VBox/ResetButton";
 
+    [Export]
+    public NodePath UiVBoxPath { get; set; } = "VBox";
+
     private SimulationHandler _simulation;
     private ParticleRenderer2D _renderer;
     private Label _particleCountLabel;
@@ -30,6 +34,10 @@ public partial class SimulationUi : Control
     private Button _attractorButton;
     private Button _drawWallButton;
     private Button _resetButton;
+    private VBoxContainer _uiVBox;
+    private OptionButton _resolutionSelector;
+    private HSlider _zoomSlider;
+    private Label _zoomLabel;
 
     public override void _Ready()
     {
@@ -40,6 +48,7 @@ public partial class SimulationUi : Control
         _attractorButton = GetNodeOrNull<Button>(AttractorButtonPath);
         _drawWallButton = GetNodeOrNull<Button>(DrawWallButtonPath);
         _resetButton = GetNodeOrNull<Button>(ResetButtonPath);
+        _uiVBox = GetNodeOrNull<VBoxContainer>(UiVBoxPath);
 
         if (_simulation is null || _renderer is null || _particleCountLabel is null)
         {
@@ -56,6 +65,7 @@ public partial class SimulationUi : Control
             _resetButton.Pressed += () => _renderer.ResetSimulation();
         }
 
+        CreateAdvancedControls();
         SelectTool(ParticleRenderer2D.SimulationTool.Emitter);
     }
 
@@ -98,6 +108,83 @@ public partial class SimulationUi : Control
         if (button is not null)
         {
             button.ButtonPressed = pressed;
+        }
+    }
+
+    private void CreateAdvancedControls()
+    {
+        if (_uiVBox is null || _simulation is null || _renderer is null)
+        {
+            return;
+        }
+
+        _resolutionSelector = new OptionButton();
+        _resolutionSelector.AddItem("64x64");
+        _resolutionSelector.AddItem("128x128");
+        _resolutionSelector.AddItem("256x256");
+        _resolutionSelector.ItemSelected += OnResolutionSelected;
+        _uiVBox.AddChild(_resolutionSelector);
+        _resolutionSelector.Selected = ResolutionIndexForCurrentGrid();
+
+        _zoomLabel = new Label();
+        _uiVBox.AddChild(_zoomLabel);
+
+        _zoomSlider = new HSlider
+        {
+            MinValue = _renderer.MinZoom,
+            MaxValue = _renderer.MaxZoom,
+            Step = 0.05,
+            Value = _renderer.Zoom
+        };
+        _zoomSlider.ValueChanged += OnZoomChanged;
+        _uiVBox.AddChild(_zoomSlider);
+
+        UpdateZoomLabel((float)_zoomSlider.Value);
+    }
+
+    private int ResolutionIndexForCurrentGrid()
+    {
+        return _simulation.GridWidth switch
+        {
+            128 => 1,
+            256 => 2,
+            _ => 0
+        };
+    }
+
+    private void OnResolutionSelected(long index)
+    {
+        if (_simulation is null)
+        {
+            return;
+        }
+
+        int size = index switch
+        {
+            1 => 128,
+            2 => 256,
+            _ => 64
+        };
+
+        _simulation.SetGridResolution(size, size);
+    }
+
+    private void OnZoomChanged(double value)
+    {
+        if (_renderer is null)
+        {
+            return;
+        }
+
+        _renderer.SetZoom((float)value);
+        UpdateZoomLabel((float)value);
+    }
+
+    private void UpdateZoomLabel(float value)
+    {
+        if (_zoomLabel is not null)
+        {
+            _zoomLabel.Text = $"Zoom: {value:F2}x";
         }
     }
 }

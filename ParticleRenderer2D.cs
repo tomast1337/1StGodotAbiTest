@@ -14,7 +14,7 @@ public partial class ParticleRenderer2D : Node2D
     public NodePath SimulationHandlerPath { get; set; } = "SimulationHandler";
 
     [Export]
-    public float SimulationScale { get; set; } = 10.0f;
+    public float Zoom { get; set; } = 1.0f;
 
     [Export]
     public float ParticleRadius { get; set; } = 4.0f;
@@ -39,6 +39,15 @@ public partial class ParticleRenderer2D : Node2D
 
     [Export]
     public Color WallColor { get; set; } = new(0.35f, 0.45f, 1.0f, 0.45f);
+
+    [Export]
+    public float ZoomStep { get; set; } = 0.1f;
+
+    [Export]
+    public float MinZoom { get; set; } = 0.25f;
+
+    [Export]
+    public float MaxZoom { get; set; } = 4.0f;
 
     public SimulationTool ActiveTool { get; private set; } = SimulationTool.Emitter;
 
@@ -89,6 +98,18 @@ public partial class ParticleRenderer2D : Node2D
         if (@event is InputEventKey { Pressed: true, Echo: false, Keycode: Key.C })
         {
             _simulation.ClearParticles();
+        }
+
+        if (@event is InputEventMouseButton { Pressed: true } mouseButton)
+        {
+            if (mouseButton.ButtonIndex == MouseButton.WheelUp)
+            {
+                SetZoom(Zoom + ZoomStep);
+            }
+            else if (mouseButton.ButtonIndex == MouseButton.WheelDown)
+            {
+                SetZoom(Zoom - ZoomStep);
+            }
         }
     }
 
@@ -234,11 +255,11 @@ public partial class ParticleRenderer2D : Node2D
 
     private void DrawWalls()
     {
-        Vector2 cellSize = Vector2.One * SimulationScale;
+        Vector2 cellSize = GetDynamicScale();
 
-        for (int y = 0; y < SimulationHandler.GridHeight; y++)
+        for (int y = 0; y < _simulation.GridHeight; y++)
         {
-            for (int x = 0; x < SimulationHandler.GridWidth; x++)
+            for (int x = 0; x < _simulation.GridWidth; x++)
             {
                 if (!_simulation.IsWallCell(x, y))
                 {
@@ -293,11 +314,35 @@ public partial class ParticleRenderer2D : Node2D
 
     private Vector2 SimToScreen(Vector2 position)
     {
-        return position * SimulationScale;
+        return position * GetDynamicScale();
     }
 
     private Vector2 ScreenToSim(Vector2 position)
     {
-        return position / SimulationScale;
+        Vector2 scale = GetDynamicScale();
+        return new Vector2(
+            scale.X <= Mathf.Epsilon ? 0.0f : position.X / scale.X,
+            scale.Y <= Mathf.Epsilon ? 0.0f : position.Y / scale.Y
+        );
+    }
+
+    private Vector2 GetDynamicScale()
+    {
+        if (_simulation is null || _simulation.GridWidth <= 0 || _simulation.GridHeight <= 0)
+        {
+            return Vector2.One;
+        }
+
+        Vector2 viewportSize = GetViewportRect().Size;
+        Vector2 baseScale = new Vector2(
+            viewportSize.X / _simulation.GridWidth,
+            viewportSize.Y / _simulation.GridHeight
+        );
+        return baseScale * Zoom;
+    }
+
+    public void SetZoom(float value)
+    {
+        Zoom = Mathf.Clamp(value, MinZoom, MaxZoom);
     }
 }

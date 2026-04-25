@@ -8,14 +8,16 @@ public partial class SimulationHandler : Node
     private const string NativeLibraryName = "particle_sim";
     private const string NativeLibraryPath = "res://particle_sim/target/release/libparticle_sim.so";
     public const int MaxParticles = 1048576;
-    public const int GridWidth = 64;
-    public const int GridHeight = 64;
+    private const int DefaultGridWidth = 64;
+    private const int DefaultGridHeight = 64;
 
     private IntPtr _simulation = IntPtr.Zero;
-    private readonly float[] _sdf = new float[GridWidth * GridHeight];
+    private float[] _sdf = Array.Empty<float>();
 
     public bool IsRunning => _simulation != IntPtr.Zero;
-    private readonly bool[] _wallMask = new bool[GridWidth * GridHeight];
+    private bool[] _wallMask = Array.Empty<bool>();
+    public int GridWidth { get; private set; } = DefaultGridWidth;
+    public int GridHeight { get; private set; } = DefaultGridHeight;
 
     static SimulationHandler()
     {
@@ -24,15 +26,7 @@ public partial class SimulationHandler : Node
 
     public override void _Ready()
     {
-        _simulation = SimCreate((UIntPtr)MaxParticles, (UIntPtr)GridWidth, (UIntPtr)GridHeight);
-        if (_simulation == IntPtr.Zero)
-        {
-            GD.PushError("Failed to create native particle simulation.");
-            return;
-        }
-
-        ResetSdf();
-        SeedParticles();
+        InitializeGrid(DefaultGridWidth, DefaultGridHeight);
     }
 
     public override void _Process(double delta)
@@ -69,6 +63,37 @@ public partial class SimulationHandler : Node
 
         string path = ProjectSettings.GlobalizePath(NativeLibraryPath);
         return NativeLibrary.Load(path, assembly, searchPath);
+    }
+
+    public bool InitializeGrid(int width, int height)
+    {
+        if (width <= 0 || height <= 0)
+        {
+            GD.PushError($"Invalid grid size: {width}x{height}");
+            return false;
+        }
+
+        if (_simulation != IntPtr.Zero)
+        {
+            SimDestroy(_simulation);
+            _simulation = IntPtr.Zero;
+        }
+
+        GridWidth = width;
+        GridHeight = height;
+        _sdf = new float[GridWidth * GridHeight];
+        _wallMask = new bool[GridWidth * GridHeight];
+
+        _simulation = SimCreate((UIntPtr)MaxParticles, (UIntPtr)GridWidth, (UIntPtr)GridHeight);
+        if (_simulation == IntPtr.Zero)
+        {
+            GD.PushError("Failed to create native particle simulation.");
+            return false;
+        }
+
+        ResetSdf();
+        SeedParticles();
+        return true;
     }
 
     private void ResetSdf()
@@ -193,6 +218,11 @@ public partial class SimulationHandler : Node
     {
         ClearParticles();
         ResetSdf();
+    }
+
+    public bool SetGridResolution(int width, int height)
+    {
+        return InitializeGrid(width, height);
     }
 
     public bool ApplyAttractor(Vector2 position, float strength, float radius, float delta)
