@@ -19,6 +19,9 @@ public partial class SimulationHandler : Node
     public int GridWidth { get; private set; } = DefaultGridWidth;
     public int GridHeight { get; private set; } = DefaultGridHeight;
 
+    [Export(PropertyHint.Range, "0,10,0.01")]
+    public float LinearDamping { get; set; } = 0.35f;
+
     static SimulationHandler()
     {
         NativeLibrary.SetDllImportResolver(Assembly.GetExecutingAssembly(), ResolveNativeLibrary);
@@ -36,6 +39,7 @@ public partial class SimulationHandler : Node
             return;
         }
 
+        SimSetLinearDamping(_simulation, LinearDamping);
         SimStep(_simulation, (float)delta);
     }
 
@@ -91,6 +95,7 @@ public partial class SimulationHandler : Node
             return false;
         }
 
+        SimSetLinearDamping(_simulation, LinearDamping);
         ResetSdf();
         SeedParticles();
         return true;
@@ -368,6 +373,9 @@ public partial class SimulationHandler : Node
         float radius,
         float dt
     );
+
+    [DllImport(NativeLibraryName, EntryPoint = "sim_set_linear_damping", CallingConvention = CallingConvention.Cdecl)]
+    private static extern byte SimSetLinearDamping(IntPtr simulation, float damping);
 
     [DllImport(NativeLibraryName, EntryPoint = "sim_particle_count", CallingConvention = CallingConvention.Cdecl)]
     private static extern UIntPtr SimParticleCount(IntPtr simulation);

@@ -35,6 +35,7 @@ pub struct Simulation {
     grid_width: usize,
     grid_height: usize,
     max_particles: usize,
+    linear_damping: f32,
 }
 
 impl Simulation {
@@ -53,6 +54,7 @@ impl Simulation {
             grid_width: width,
             grid_height: height,
             max_particles,
+            linear_damping: 0.35,
         })
     }
 
@@ -93,8 +95,18 @@ impl Simulation {
                 }
             }
 
+            // Exponential damping keeps behavior stable across frame rates.
+            let damping_factor = (-self.linear_damping * dt).exp();
+            vel *= damping_factor;
+
             particle.pos = pos.into();
             particle.vel = vel.into();
+        }
+    }
+
+    fn set_linear_damping(&mut self, damping: f32) {
+        if damping.is_finite() && damping >= 0.0 {
+            self.linear_damping = damping;
         }
     }
 
@@ -270,6 +282,16 @@ pub extern "C" fn sim_apply_attractor(
     };
 
     sim.apply_attractor(target, strength, radius, dt);
+    1
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn sim_set_linear_damping(sim_ptr: *mut Simulation, damping: f32) -> u8 {
+    let Some(sim) = (unsafe { sim_ptr.as_mut() }) else {
+        return 0;
+    };
+
+    sim.set_linear_damping(damping);
     1
 }
 

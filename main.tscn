@@ -15,10 +15,9 @@ script = ExtResource("2_q4k6n")
 [node name="UiLayer" type="CanvasLayer" parent="." unique_id=605975700]
 
 [node name="ToolsPanel" type="PanelContainer" parent="UiLayer" unique_id=1088002576]
-offset_left = 407.0
-offset_top = 536.0
-offset_right = 807.0
-offset_bottom = 634.0
+offset_top = 546.0
+offset_right = 346.0
+offset_bottom = 645.0
 script = ExtResource("3_hvncf")
 
 [node name="VBox" type="VBoxContainer" parent="UiLayer/ToolsPanel" unique_id=1176827321]
